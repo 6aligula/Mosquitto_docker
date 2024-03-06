@@ -1,0 +1,6 @@
+Construir y levantar el contenedor:
+docker.compose up --build
+
+
+comandod e conexion:
+docker exec -it 88c /bin/sh
