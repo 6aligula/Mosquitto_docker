@@ -15,4 +15,4 @@ services:
 
 networks:
   mi_red_comun:
-    external: true
+    name: mi_red_comun
