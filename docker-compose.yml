@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   mosquitto:
@@ -10,3 +10,9 @@ services:
     volumes:
       - ./data:/mosquitto/data
       - ./log:/mosquitto/log
+    networks:
+      - mi_red_comun
+
+networks:
+  mi_red_comun:
+    external: true
