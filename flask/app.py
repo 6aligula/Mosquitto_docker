@@ -86,9 +86,10 @@ def publish_message(topic, message):
         return False
 
 
-def schedule_shutdown(seconds):
-    print(f"Scheduling shutdown in {seconds} seconds")
-    time.sleep(seconds)
+def schedule_shutdown(milliseconds):
+    seconds = milliseconds / 1000  # Convertir milisegundos a segundos
+    print(f"Scheduling shutdown in {milliseconds} milliseconds")
+    time.sleep(seconds)  # time.sleep espera segundos, por lo que convertimos los milisegundos a segundos.
     if publish_message(dispensar_topic, '0'):
         print("Dispenser turned off successfully.")
     else:
@@ -96,13 +97,18 @@ def schedule_shutdown(seconds):
 
 @app.route('/dispensar/encender', methods=['POST'])
 def encender_dispensar():
-    seconds = request.args.get('seconds', default=0, type=int)  # Get seconds from query parameter
+    seconds = request.args.get('seconds', default=0, type=int)  # Obtener segundos del parámetro de consulta
+    
+    if seconds <= 0:
+        return jsonify({"success": False, "message": "No se puede encender el dispensador por 0 segundos o menos."}), 400
+    
+    milliseconds = seconds * 200  # Convertir segundos a milisegundos (1 segundo = 100 milisegundos)
     if publish_message(dispensar_topic, '1'):
-        if seconds > 0:
-            # Schedule a thread to turn off the dispenser after the specified time
-            timer = threading.Thread(target=schedule_shutdown, args=(seconds,))
+        if milliseconds > 0:
+            # Programa un hilo para apagar el dispensador después del tiempo especificado en milisegundos
+            timer = threading.Thread(target=schedule_shutdown, args=(milliseconds,))
             timer.start()
-        return jsonify({"success": True, "message": "Dispensador encendido back", "shutdown_in": f"{seconds} seconds"}), 200
+        return jsonify({"success": True, "message": "Dispensando...", "shutdown_in": f"{milliseconds} milliseconds"}), 200
     else:
         return jsonify({"success": False, "message": "Failed to turn on dispenser"}), 500
 
