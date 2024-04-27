@@ -1,5 +1,7 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import paho.mqtt.client as mqtt
+import threading
+import time
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
@@ -70,13 +72,40 @@ client.loop_start()
 def index():
     return "MQTT to Flask Bridge"
 
+def publish_message(topic, message):
+    try:
+        result = client.publish(topic, message)
+        if result.rc == 0:
+            print(f"Message published to {topic}")
+            return True
+        else:
+            print(f"Failed to publish message: {mqtt.error_string(result.rc)}")
+            return False
+    except Exception as e:
+        print(f"Exception while publishing message: {e}")
+        return False
+
+
+def schedule_shutdown(seconds):
+    print(f"Scheduling shutdown in {seconds} seconds")
+    time.sleep(seconds)
+    if publish_message(dispensar_topic, '0'):
+        print("Dispenser turned off successfully.")
+    else:
+        print("Failed to turn off dispenser.")
+
 @app.route('/dispensar/encender', methods=['POST'])
 def encender_dispensar():
-    try:
-        client.publish(dispensar_topic, '1')
-        return jsonify({"success": True, "message": "Dispensador encendido"}), 200
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    seconds = request.args.get('seconds', default=0, type=int)  # Get seconds from query parameter
+    if publish_message(dispensar_topic, '1'):
+        if seconds > 0:
+            # Schedule a thread to turn off the dispenser after the specified time
+            timer = threading.Thread(target=schedule_shutdown, args=(seconds,))
+            timer.start()
+        return jsonify({"success": True, "message": "Dispensador encendido back", "shutdown_in": f"{seconds} seconds"}), 200
+    else:
+        return jsonify({"success": False, "message": "Failed to turn on dispenser"}), 500
+
 
 @app.route('/dispensar/apagar', methods=['POST'])
 def apagar_dispensar():
